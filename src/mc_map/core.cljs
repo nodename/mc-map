@@ -16,14 +16,14 @@
     (render [this]
             (log "render" this)
             ;; render has to return a component:
-            (dom/div nil)))
+            (dom/div nil))
 
     om/IDidMount
     (did-mount [this node]
                (log "did-mount" (js->clj (:mapOptions app)))
                ;; node refers to the component I returned in render,
                ;; but I ignore it and attach the Map to its parentNode "map-canvas":
-               (google.maps.Map. (.-parentNode node) (:mapOptions app))))
+               (google.maps.Map. (.-parentNode node) (:mapOptions app)))))
 
 (om/root
   app-state
