@@ -7,8 +7,10 @@
 (defn log [& more]
   (.log js/console (apply str more)))
 
-(def app-state (atom {:mapOptions #js {:center (google.maps.LatLng. -34.397 150.644)
-                                       :zoom 8}}))
+(def SAN_FRANCISCO (google.maps.LatLng. 37.768544 -122.443514))
+
+(def app-state (atom {:mapOptions #js {:center SAN_FRANCISCO
+                                       :zoom 14}}))
 
 (defn map-view [app owner]
   (reify
