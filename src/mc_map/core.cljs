@@ -4,21 +4,26 @@
 
 (enable-console-print!)
 
-(def app-state (atom {:text "Hello world!"}))
+(defn log [& more]
+  (.log js/console (apply str more)))
+
+(def app-state (atom {:mapOptions #js {:center (google.maps.LatLng. -34.397 150.644)
+                                       :zoom 8}}))
 
 (defn map-view [app owner]
   (reify
-    om/IInitState
-    (init-state [_]
-        {:text "Hello world!"
-          :mapOptions #js {:center (google.maps.LatLng. -34.397 150.644)
-                           :zoom 8}})
+    om/IRender
+    (render [this]
+            (log "render" this)
+            ;; render has to return a component:
+            (dom/div nil)))
 
-    om/IRenderState
-    (render-state [this state]
-       (dom/div nil
-          (dom/h1 nil (:text state))
-          (google.maps.Map. (. js/document (getElementById "map-canvas")) (:mapOptions state))))))
+    om/IDidMount
+    (did-mount [this node]
+               (log "did-mount" (js->clj (:mapOptions app)))
+               ;; node refers to the component I returned in render,
+               ;; but I ignore it and attach the Map to its parentNode "map-canvas":
+               (google.maps.Map. (.-parentNode node) (:mapOptions app))))
 
 (om/root
   app-state
