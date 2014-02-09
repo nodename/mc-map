@@ -1,22 +1,25 @@
 <html>
     <head>
-      <script type='text/javascript' id='lt_ws' src='http://localhost:56395/socket.io/lighttable/ws.js'></script>
-      <script type= "text/javascript">
+        <script type='text/javascript' id='lt_ws' src='http://localhost:52102/socket.io/lighttable/ws.js'></script>
+        <script type= "text/javascript">
                 google = {};
-      </script>
+        </script>
 
-    <style type="text/css">
-      html { height: 100% }
-      body { height: 100%; margin: 0; padding: 0 }
-      #map-canvas { height: 100% }
-    </style>
-
+        <style type="text/css">
+            html { height: 100% }
+            body { height: 100%; margin: 0; padding: 0 }
+            #map-canvas { float: left; width: 80%; height: 100% }
+            #mb { float: left; width: 20%; height: 100% }
+        </style>
 
       <script type="text/javascript"
               src="https://maps.googleapis.com/maps/api/js?sensor=false"></script>
     </head>
     <body>
         <div id="map-canvas"></div>
+        <div id="mb">
+            <button id="map-button">Move To New York</button>
+        </div>
         <script src="http://fb.me/react-0.8.0.js"></script>
         <script src="out/goog/base.js" type="text/javascript"></script>
         <script src="mc_map.js" type="text/javascript"></script>
