@@ -14,14 +14,10 @@
 
 (def app-state (atom {:mapOptions #js {:center SIXTEENTH_AND_MISSION
                                        :zoom 14}
+                      :directions nil
                       :points []}))
 
-(defn mc-click-handler
-  "This function is invoked when a feature in the mc-layer is clicked"
-  [e]
-  (log (js->clj (.. e -latLng)))
-  ;(calc-route HOME (.. e -latLng))
-  )
+(def directions-service (google.maps.DirectionsService.))
 
 (defn add-mc-layer
   "return the mc-layer"
@@ -57,10 +53,15 @@
   (reify
     om/IInitState
     (init-state [_]
-                {:move (chan)  ; channel for move requests
-                 :toggle (chan) ; channel for toggle requests
+                {; channels for update requests:
+                 :move (chan)  ; move map center
+                 :toggle (chan) ; toggle display of mc-layer
+                 :route (chan) ; update directions
+
+                 ; view elements:
                  :google-map nil ; the Google Maps object
                  :mc-layer nil ; the motorcycle meters map layer
+                 :directions-renderer nil
                  :markers []})
 
     om/IWillMount
@@ -72,16 +73,27 @@
              (<! toggle)
              (toggle-mc-layer owner)
              (recur))))
+     (let [route (om/get-state owner :route)]
+       (go (loop []
+             (let [directions (<! route)]
+               (om/update! app assoc-in [:directions] directions)
+             (recur)))))
      (let [move (om/get-state owner :move)]
        (go (loop []
-             (let [loc (<! move)]
-               (om/update! app assoc-in [:mapOptions] {:center loc :zoom 14}))
+             (let [location (<! move)]
+               (log location)
+               (om/update! app assoc-in [:mapOptions] (js-obj {"center" location "zoom" 14})))
              (recur)))))
 
     om/IRenderState
-    (render-state [this {:keys [move toggle google-map]}]
-                  (when (and google-map (:center (:mapOptions app)))
-                    (.panTo google-map (:center (:mapOptions app))))
+    (render-state [this {:keys [move toggle google-map directions-renderer]}]
+                  (when-let [center (.center (:mapOptions app))]
+                    (when google-map
+                      (do
+                        (log "Here: " center)
+                        (.panTo google-map center))))
+                  (when-let [directions (:directions app)]
+                    (.setDirections directions-renderer directions))
 
                   (dom/div #js {:style #js {:width "100%" :height "100%"}}
                            (dom/div #js {:id "map-holder" :style #js {:width "80%" :height "100%" :float "left"}})
@@ -97,9 +109,21 @@
     (did-mount [this node]
                (let [the-map (google.maps.Map. (. js/document (getElementById "map-holder"))
                                                (:mapOptions app))]
-                 (om/set-state! owner :google-map the-map)
-                 (let [mc-layer (add-mc-layer the-map mc-click-handler)]
-                   (om/set-state! owner :mc-layer mc-layer)))
+                 (om/set-state! owner :directions-renderer (google.maps.DirectionsRenderer. #js {:map the-map}))
+                 (let [directions-handler (fn [response status]
+                                            (when (= status google.maps.DirectionsStatus.OK)
+                                              (put! (om/get-state owner :route) response)))
+                       calc-route (fn [start end]
+                                    (let [request #js {:origin start
+                                                       :destination end
+                                                       :travelMode google.maps.TravelMode.DRIVING}]
+                                      (.route directions-service request directions-handler)))
+                       mc-click-handler (fn [e]
+                                          (log (js->clj (.. e -latLng)))
+                                          (calc-route SIXTEENTH_AND_MISSION (.. e -latLng)))
+                       mc-layer (add-mc-layer the-map mc-click-handler)]
+                   (om/set-state! owner :mc-layer mc-layer))
+                 (om/set-state! owner :google-map the-map))
                (update-markers (:points app) owner))))
 
 (om/root
