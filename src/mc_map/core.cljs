@@ -81,17 +81,14 @@
      (let [move (om/get-state owner :move)]
        (go (loop []
              (let [location (<! move)]
-               (log location)
-               (om/update! app assoc-in [:mapOptions] (js-obj {"center" location "zoom" 14})))
+               (om/update! app assoc-in [:mapOptions] {:center location :zoom 14}))
              (recur)))))
 
     om/IRenderState
     (render-state [this {:keys [move toggle google-map directions-renderer]}]
-                  (when-let [center (.center (:mapOptions app))]
-                    (when google-map
-                      (do
-                        (log "Here: " center)
-                        (.panTo google-map center))))
+                  (when google-map
+                    (when-let [center (:center (:mapOptions app))]
+                      (.panTo google-map center)))
                   (when-let [directions (:directions app)]
                     (.setDirections directions-renderer directions))
 
