@@ -13,8 +13,7 @@
 (def ALPHABET_CITY (google.maps.LatLng. 40.724545 -73.979050))
 
 ;; state that is expected to have some significance outside of the Google Maps component:
-(def app-state (atom {:directions nil
-                      :points []}))
+(def app-state (atom {:points []}))
 
 (defn add-mc-layer
   "Initialize and return the mc-layer"
@@ -23,14 +22,13 @@
         directions-handler (fn [response status]
                              (when (= status google.maps.DirectionsStatus.OK)
                                (put! (om/get-state owner :route) response)))
-        calc-route (fn [start end]
-                     (let [request #js {:origin start
-                                        :destination end
-                                        :travelMode google.maps.TravelMode.DRIVING}]
-                       (.route directions-service request directions-handler)))
+        request-route (fn [start end]
+                        (let [request #js {:origin start
+                                           :destination end
+                                           :travelMode google.maps.TravelMode.DRIVING}]
+                          (.route directions-service request directions-handler)))
         mc-click-handler (fn [e]
-                           ; (log (js->clj (.. e -latLng)))
-                           (calc-route SIXTEENTH_AND_MISSION (.. e -latLng)))
+                           (request-route SIXTEENTH_AND_MISSION (.. e -latLng)))
         mc-layer (google.maps.KmlLayer. #js {:url "http://nodename.com/MotorcycleMeters_20130412.kml"
                                              :preserveViewport true ; don't zoom or position the map to the
                                                                     ; KmlLayer's bounds when showing the layer
@@ -74,12 +72,18 @@
                  :google-map nil ; the Google Maps object
                  :mc-layer nil ; the motorcycle meters map layer
                  :directions-renderer nil
+
+                 ; state:
                  :center SIXTEENTH_AND_MISSION
+                 :center-must-update false
+                 :directions nil
+                 :directions-must-update false
+                 :toggle-must-update false
                  :markers []})
 
     om/IWillMount
     (will-mount
-     ;; establish a go-loop that will listen for requests and act on them:
+     ;; establish a go-loop that will listen for requests and update component state accordingly:
      [_]
      (let [toggle (om/get-state owner :toggle)
            route (om/get-state owner :route)
@@ -87,43 +91,56 @@
        (go (loop []
              (let [[value source] (alts! [toggle route move])]
                (condp = source
-                 toggle (toggle-mc-layer owner)
-                 route (om/update! app assoc-in [:directions] value)
+                 toggle (om/set-state! owner :toggle-must-update true)
+                 route (do
+                         (om/set-state! owner :directions value)
+                         (om/set-state! owner :directions-must-update true))
                  move (do
-                        ;; note: panTo has no effect when there are directions
-                        (om/update! app assoc-in [:directions] nil)
-                        (om/set-state! owner :center value))))
+                        (om/set-state! owner :center value)
+                        (om/set-state! owner :center-must-update true))))
              (recur)))))
 
     om/IRenderState
-    (render-state [this {:keys [move toggle google-map directions-renderer center]}]
-                  (when-let [directions (:directions app)]
-                    (.setDirections directions-renderer directions))
-                  (when google-map
-                    ;; note: panTo has no effect when there are directions
-                    (.panTo google-map center))
-                  (update-markers (:points app) owner)
+    (render-state
+     [this {:keys [move toggle google-map directions-renderer
+                   center center-must-update
+                   directions directions-must-update
+                   toggle-must-update]}]
+     (when directions-must-update
+       (.setDirections directions-renderer directions))
+     (when center-must-update
+       (.panTo google-map center))
+     (when toggle-must-update
+       (toggle-mc-layer owner))
+     (update-markers (:points app) owner)
 
-                  (dom/div #js {:style #js {:width "100%" :height "100%"}}
-                           (dom/div #js {:id "map-holder" :style #js {:width "80%" :height "100%" :float "left"}})
-                           (dom/button #js {:width "20%" :float "left"
-                                            :onClick (fn [e]
-                                                       (put! toggle :request))}
-                                       "Toggle MC Meters")
-                           (dom/button #js {:width "20%" :float "left"
-                                            :onClick (fn [e] (put! move ALPHABET_CITY))}
-                                       "Move to New York")))
+     (dom/div #js {:style #js {:width "100%" :height "100%"}}
+              (dom/div #js {:id "map-holder"
+                            :style #js {:width "80%" :height "100%" :float "left"}})
+              (dom/button #js {:width "20%" :float "left"
+                               :onClick (fn [e]
+                                          (put! toggle :request))}
+                          "Toggle MC Meters")
+              (dom/button #js {:width "20%" :float "left"
+                               :onClick (fn [e] (put! move ALPHABET_CITY))}
+                          "Move to New York")))
+
+    om/IDidUpdate
+    (did-update
+     [_ _ _]
+     (om/set-state! owner :center-must-update false)
+     (om/set-state! owner :directions-must-update false)
+     (om/set-state! owner :toggle-must-update false))
 
     om/IDidMount
-    (did-mount [this node]
-               (let [the-map (google.maps.Map. (. js/document (getElementById "map-holder"))
-                                               #js {:center (om/get-state owner :center) :zoom 14})]
-                 (om/set-state! owner :directions-renderer (google.maps.DirectionsRenderer. #js {:map the-map}))
-                 (om/set-state! owner :mc-layer (add-mc-layer the-map owner))
-                 (om/set-state! owner :google-map the-map)))))
+    (did-mount
+     [this]
+     (let [the-map (google.maps.Map. (. js/document (getElementById "map-holder"))
+                                     #js {:center (om/get-state owner :center) :zoom 14})]
+       (om/set-state! owner :directions-renderer (google.maps.DirectionsRenderer. #js {:map the-map}))
+       (om/set-state! owner :mc-layer (add-mc-layer the-map owner))
+       (om/set-state! owner :google-map the-map)))))
 
-(om/root
-  app-state
-  map-view
-  (. js/document (getElementById "content")))
+(om/root map-view app-state {:target (. js/document (getElementById "content"))})
+
 
