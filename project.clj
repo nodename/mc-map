@@ -17,6 +17,6 @@
               :compiler {
                 :output-to "mc_map.js"
                 :output-dir "out"
-                :externs ["google_maps_api_v3.js"]
+                :externs ["externs/google_maps_api_v3.js"]
                 :optimizations :none
                 :source-map true}}]})
