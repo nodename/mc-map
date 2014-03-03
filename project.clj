@@ -12,11 +12,22 @@
   :source-paths ["src"]
 
   :cljsbuild {
-    :builds [{:id "mc-map"
+    :builds [{:id "dev"
               :source-paths ["src"]
               :compiler {
-                :output-to "mc_map.js"
-                :output-dir "out"
+                :output-to "mc_map.dev.js"
+                :output-dir "out/dev"
                 :externs ["externs/google_maps_api_v3.js"]
                 :optimizations :none
-                :source-map "mc_map.js.map"}}]})
+                :source-map true}}
+
+              {:id "prod"
+               :source-paths ["src"]
+               :compiler {:output-to "mc_map.prod.js"
+                          :output-dir "out/prod"
+                          :optimizations :advanced
+                          :source-map "mc_map.prod.js.map"
+                          :pretty-print false
+                          :preamble ["react/react.min.js"]
+                          :externs ["externs/google_maps_api_v3.js" "react/externs/react.js"]}}]})
+
