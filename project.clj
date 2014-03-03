@@ -1,5 +1,5 @@
 (defproject mc-map "0.1.0-SNAPSHOT"
-  :description "FIXME: write this!"
+  :description "Google Maps V3 application in Om"
   :url "http://example.com/FIXME"
 
   :dependencies [[org.clojure/clojure "1.5.1"]
