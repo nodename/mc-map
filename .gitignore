@@ -7,3 +7,8 @@ pom.xml
 .lein-deps-sum
 .lein-repl-history
 .lein-plugins/
+mc_map.js
+.DS_Store
+.nrepl-port
+externs.textClipping
+mc_map.js.map
