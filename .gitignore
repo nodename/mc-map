@@ -12,3 +12,6 @@ mc_map.js
 .nrepl-port
 externs.textClipping
 mc_map.js.map
+mc_map.dev.js
+mc_map.prod.js
+mc_map.prod.js.map
