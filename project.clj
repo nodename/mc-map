@@ -19,4 +19,4 @@
                 :output-dir "out"
                 :externs ["externs/google_maps_api_v3.js"]
                 :optimizations :none
-                :source-map true}}]})
+                :source-map "mc_map.js.map"}}]})
