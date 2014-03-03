@@ -62,55 +62,51 @@
   "The Google Maps (plus a couple of buttons) component"
   (reify
     om/IInitState
-    (init-state [_]
-                {; channels for update requests:
-                 :move (chan)  ; move map center
-                 :toggle (chan) ; toggle display of mc-layer
-                 :route (chan) ; update directions
+    (init-state
+     [_]
+     {; channels for update requests:
+      :move (chan)  ; move map center
+      :toggle (chan) ; toggle display of mc-layer
+      :route (chan) ; update directions
 
-                 ; view elements:
-                 :google-map nil ; the Google Maps object
-                 :mc-layer nil ; the motorcycle meters map layer
-                 :directions-renderer nil
+      ; view elements:
+      :google-map nil ; the Google Maps object
+      :mc-layer nil ; the motorcycle meters map layer
+      :directions-renderer nil
 
-                 ; state:
-                 :center SIXTEENTH_AND_MISSION
-                 :center-must-update false
-                 :directions nil
-                 :directions-must-update false
-                 :toggle-must-update false
-                 :markers []})
+      ; state:
+      :center {:data SIXTEENTH_AND_MISSION :dirty false}
+      :directions {:data nil :dirty false}
+      :mc-visible {:dirty false}
+      :markers []})
 
     om/IWillMount
     (will-mount
      ;; establish a go-loop that will listen for requests and update component state accordingly:
      [_]
-     (let [toggle (om/get-state owner :toggle)
-           route (om/get-state owner :route)
-           move (om/get-state owner :move)]
+     (let [move (om/get-state owner :move)
+           toggle (om/get-state owner :toggle)
+           route (om/get-state owner :route)]
        (go (loop []
-             (let [[value source] (alts! [toggle route move])]
+             (let [[value source] (alts! [move toggle route])]
                (condp = source
-                 toggle (om/set-state! owner :toggle-must-update true)
-                 route (do
-                         (om/set-state! owner :directions value)
-                         (om/set-state! owner :directions-must-update true))
-                 move (do
-                        (om/set-state! owner :center value)
-                        (om/set-state! owner :center-must-update true))))
+                 move (om/set-state! owner :center {:data value :dirty true})
+                 toggle (om/set-state! owner :mc-visible {:data value :dirty true})
+                 route (om/set-state! owner :directions {:data value :dirty true})))
              (recur)))))
 
     om/IRenderState
     (render-state
-     [this {:keys [move toggle google-map directions-renderer
-                   center center-must-update
-                   directions directions-must-update
-                   toggle-must-update]}]
-     (when directions-must-update
-       (.setDirections directions-renderer directions))
-     (when center-must-update
-       (.panTo google-map center))
-     (when toggle-must-update
+     [this {:keys [move toggle
+                   google-map directions-renderer
+                   center directions mc-visible]}]
+     ;; any diffs to the DOM are handled automatically by React,
+     ;; but we have to manually diff the parts of the Google Maps state that we are managing:
+     (when (:dirty center)
+       (.panTo google-map (:data center)))
+     (when (:dirty directions)
+       (.setDirections directions-renderer (:data directions)))
+     (when (:dirty mc-visible)
        (toggle-mc-layer owner))
      (update-markers (:points app) owner)
 
@@ -128,15 +124,19 @@
     om/IDidUpdate
     (did-update
      [_ _ _]
-     (om/set-state! owner :center-must-update false)
-     (om/set-state! owner :directions-must-update false)
-     (om/set-state! owner :toggle-must-update false))
+     ;; In render-state, we have applied all dirty state.
+     ;; After rendering we reset all the dirty flags:
+     (om/set-state! owner [:center :dirty] false)
+     (om/set-state! owner [:directions :dirty] false)
+     (om/set-state! owner [:mc-visible :dirty] false))
 
     om/IDidMount
     (did-mount
      [this]
+     ;; After the Om component has first been mounted to the real DOM,
+     ;; initialize the Google Maps elements:
      (let [the-map (google.maps.Map. (. js/document (getElementById "map-holder"))
-                                     #js {:center (om/get-state owner :center) :zoom 14})]
+                                     #js {:center (om/get-state owner [:center :data]) :zoom 14})]
        (om/set-state! owner :directions-renderer (google.maps.DirectionsRenderer. #js {:map the-map}))
        (om/set-state! owner :mc-layer (add-mc-layer the-map owner))
        (om/set-state! owner :google-map the-map)))))
