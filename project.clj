@@ -9,11 +9,11 @@
 
   :plugins [[lein-cljsbuild "1.0.1"]]
 
-  :source-paths ["src"]
+  :source-paths ["src/clj"]
 
   :cljsbuild {
     :builds [{:id "dev"
-              :source-paths ["src"]
+              :source-paths ["src/cljs"]
               :compiler {
                 :output-to "mc_map.dev.js"
                 :output-dir "out/dev"
@@ -22,7 +22,7 @@
                 :source-map true}}
 
               {:id "prod"
-               :source-paths ["src"]
+               :source-paths ["src/cljs"]
                :compiler {:output-to "mc_map.prod.js"
                           :output-dir "out/prod"
                           :optimizations :advanced

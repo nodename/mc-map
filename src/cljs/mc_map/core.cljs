@@ -1,13 +1,11 @@
 (ns mc-map.core
-  (:require-macros [cljs.core.async.macros :refer [go]])
+  (:require-macros [cljs.core.async.macros :refer [go]]
+                   [utils.helpers :refer [clog]])
   (:require [om.core :as om :include-macros true]
             [om.dom :as dom :include-macros true]
             [cljs.core.async :refer [put! chan <! alts!]]))
 
 (enable-console-print!)
-
-(defn log [& more]
-  (.log js/console (apply str more)))
 
 (def SIXTEENTH_AND_MISSION (google.maps.LatLng. 37.764847 -122.420042))
 (def ALPHABET_CITY (google.maps.LatLng. 40.724545 -73.979050))
@@ -54,7 +52,8 @@
 
 (defn update-markers
   [points {:keys [google-map markers] :as owner}]
-  (map markers #(.setMap % nil))
+  (doseq [m markers]
+    (.setMap m nil))
   (let [new-markers (map #(marker-from-point % google-map) points)]
     (om/set-state! owner :markers new-markers)))
 
